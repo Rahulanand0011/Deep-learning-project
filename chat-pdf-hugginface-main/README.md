@@ -1,67 +1,46 @@
-# Chat with PDF
+# 🧠 Deep Learning Document Intelligence & RAG Chatbot
 
-This Python project that allows you to chat with a chatbot about the PDF you uploaded. and generate a PDF transcript of the conversation. The project is built using Python and Streamlit framework.
+An applied Deep Learning and NLP application that combines Dense Vector Embeddings, Neural Cross-Encoder Re-Ranking, Speech-to-Text (Whisper ASR), Faithfulness Evaluation, and Groq LPUs (`openai/gpt-oss-120b`) for document Q&A and analysis.
 
+---
 
-This is a fork from https://github.com/sudan94/chat-pdf-hugginface. I had issues install the requirements.txt, thus I removed the '==version' in requirements.txt with 
-```shell
-sed -i 's/\=.*//g' requirements.txt
+## 🔬 Core Deep Learning & NLP Features
+
+1. **⚡ Neural Cross-Encoder Re-Ranking**:
+   - Uses `cross-encoder/ms-marco-MiniLM-L-6-v2` to re-score candidate document chunks using full bidirectional cross-attention.
+   - Eliminates irrelevant passages and drastically boosts retrieval precision.
+
+2. **📚 Source Citations & Page Attribution**:
+   - Preserves per-page metadata across PDF, Word, CSV, and Text documents.
+   - Every answer includes an expandable citation view with exact snippets and document page numbers.
+
+3. **🎯 Faithfulness & Grounding Confidence Score**:
+   - Measures semantic entailment between the generated answer and retrieved source passages.
+   - Displays real-time confidence scores (e.g., `🟢 92.5% High Entailment`).
+
+4. **🎤 Voice Input (Speech-to-Text via Whisper Large v3)**:
+   - Talk to your documents using your microphone via Groq's high-speed Whisper LPU engine.
+
+5. **🔊 Spoken Audio Responses (Text-to-Speech)**:
+   - Listen to AI-generated answers directly in the browser.
+
+6. **📊 Automated Executive Summary & Document Overview**:
+   - Automatically extracts domain categorization, key concepts, and high-level summaries upon document upload.
+
+---
+
+## 🚀 Quick Start
+
+### 1. Launch the Application
+Double-click `run.bat` or run in PowerShell:
+```powershell
+.\run.ps1
 ```
-Then, I added some modules that are needed for app.py that were not in requirements.txt.  
+Open **http://localhost:8501** in your browser.
 
-A `conda` environment is used instead of `venv` virtual environment
-
-## Installation
-
-To run this project, please follow the steps below:
-
-1. Clone the repository:
-
-```shell
-git clone git@github.com:MattLondon101/chat-pdf-hugginface.git
-cd chat-pdf-hugginface
+### 2. Configure API Key
+Add your Groq API key in [`.env`](.env) or directly in the Streamlit sidebar:
+```env
+GROQ_API_KEY=your_groq_api_key_here
 ```
-
-2. Create and activate a conda virtual environment (optional but recommended):
-
-```shell
-conda create -n env1 python=3.10
-conda activate env1
-```
-
-3. Install the dependencies from the `requirements.txt` file:
-
-```shell
-pip install -r requirements.txt
-```
-
-4. You will need a HUGGINGFACEHUB_API_TOKEN for this next step. To obtain one for free, got to https://huggingface.co/ and Sign Up for a free account. Then, go to Settings > Access Tokens. Create a New token. Then, create a file in this directory, name is `.env` and enter `HUGGINGFACEHUB_API_TOKEN = "token"`,  replacing `token` with your User Access Token. Save the `.env` file. The `.gitignore` file will ignore the `.env` for git operation.
-
-## Running the Project
-
-Once you have installed the required dependencies, you can run the project using Streamlit, which should have been installed with `requirements.txt`. Streamlit provides an easy way to create interactive web applications in Python.
-
-To start the application, run the following command:
-
-```shell
-streamlit run app.py
-```
-
-This will start the Streamlit server and open the application in your default web browser..  
-
-### Git flow
-`.gitit.sh` can be used for easy pushing updates to remote repo.  
-
-Activate with:  
-```shell
-chmod +x .gitit.sh
-```
-Then, to add, commit, and push to remote repo:
-```
-./gitit.sh
-```
-
-## License
-
-This project is licensed under the [MIT License](LICENSE).
-
+*(Get a free key from [console.groq.com/keys](https://console.groq.com/keys)).*

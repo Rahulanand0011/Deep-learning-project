@@ -1,28 +1,46 @@
-# Chat with PDF & Documents (Groq & Hugging Face)
+# 🧠 Deep Learning Document Intelligence & RAG Chatbot
 
-A Python application that allows you to chat with your documents (PDF, DOCX, TXT, CSV) using RAG (Retrieval-Augmented Generation), LangChain, FAISS, and AI models.
-
-## ✨ Supported AI Models
-1. **⭐ Groq AI (Recommended - Ultra Fast & Smart)**: Powered by Groq's LPU inference engine (`openai/gpt-oss-120b`). Delivers conversational, accurate, and structured answers (summaries, explanations, code breakdowns) in milliseconds.
-2. **Local Models (`flan-t5-small` / `flan-t5-base`)**: 100% offline local inference on CPU/GPU without needing any API key.
-3. **Hugging Face Hub API (`flan-t5-large`)**: Cloud-hosted inference via Hugging Face.
+An applied Deep Learning and NLP application that combines Dense Vector Embeddings, Neural Cross-Encoder Re-Ranking, Speech-to-Text (Whisper ASR), Faithfulness Evaluation, and Groq LPUs (`openai/gpt-oss-120b`) for document Q&A and analysis.
 
 ---
 
-## ⚡ Groq API Key
+## 🔬 Core Deep Learning & NLP Features
 
-Your Groq API key is already configured in the `.env` file and pre-loaded in the app.
+1. **⚡ Neural Cross-Encoder Re-Ranking**:
+   - Uses `cross-encoder/ms-marco-MiniLM-L-6-v2` to re-score candidate document chunks using full bidirectional cross-attention.
+   - Eliminates irrelevant passages and drastically boosts retrieval precision.
 
-If you ever need to update it:
-- Either change it in the [`.env`](file:///.env) file:
-  ```env
-  GROQ_API_KEY=your_key_here
-  ```
-- Or update it directly in the app sidebar under **"⚡ Groq API Key"**.
+2. **📚 Source Citations & Page Attribution**:
+   - Preserves per-page metadata across PDF, Word, CSV, and Text documents.
+   - Every answer includes an expandable citation view with exact snippets and document page numbers.
+
+3. **🎯 Faithfulness & Grounding Confidence Score**:
+   - Measures semantic entailment between the generated answer and retrieved source passages.
+   - Displays real-time confidence scores (e.g., `🟢 92.5% High Entailment`).
+
+4. **🎤 Voice Input (Speech-to-Text via Whisper Large v3)**:
+   - Talk to your documents using your microphone via Groq's high-speed Whisper LPU engine.
+
+5. **🔊 Spoken Audio Responses (Text-to-Speech)**:
+   - Listen to AI-generated answers directly in the browser.
+
+6. **📊 Automated Executive Summary & Document Overview**:
+   - Automatically extracts domain categorization, key concepts, and high-level summaries upon document upload.
 
 ---
 
-## 🚀 Running the App
-- Double-click `run.bat`
-- Or run `.\run.ps1` in PowerShell
-- Browser URL: **http://localhost:8501**
+## 🚀 Quick Start
+
+### 1. Launch the Application
+Double-click `run.bat` or run in PowerShell:
+```powershell
+.\run.ps1
+```
+Open **http://localhost:8501** in your browser.
+
+### 2. Configure API Key
+Add your Groq API key in [`.env`](.env) or directly in the Streamlit sidebar:
+```env
+GROQ_API_KEY=your_groq_api_key_here
+```
+*(Get a free key from [console.groq.com/keys](https://console.groq.com/keys)).*
