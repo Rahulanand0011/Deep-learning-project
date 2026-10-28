@@ -15,61 +15,29 @@ import streamlit as st
 
 load_dotenv()
 
-# --- Core Document & Vector Store Imports ---
-from langchain_core.documents import Document
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_community.vectorstores import FAISS
-
-from PyPDF2 import PdfReader
-import docx
-import pandas as pd
-
-# Groq Integration
-try:
-    from langchain_groq import ChatGroq
-    from langchain_core.messages import HumanMessage
-    from groq import Groq
-except ImportError:
-    ChatGroq = None
-    Groq = None
-
-# Neural Cross-Encoder
-try:
-    from sentence_transformers import CrossEncoder
-except ImportError:
-    CrossEncoder = None
-
-# Text-to-Speech
-try:
-    from gtts import gTTS
-except ImportError:
-    gTTS = None
-
-
-# Default Groq Key
+# Default Groq Key from environment
 DEFAULT_GROQ_KEY = os.getenv("GROQ_API_KEY", "").strip()
 
 
 # ============================================================
-# Deep Learning Models (Cached)
+# Deep Learning Models (Cached & Lazy Loaded)
 # ============================================================
 
 @st.cache_resource(show_spinner=False)
 def get_embeddings():
     """Bi-Encoder Embedding Model for Dense Vector Retrieval."""
+    from langchain_huggingface import HuggingFaceEmbeddings
     return HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
 
 @st.cache_resource(show_spinner=False)
 def get_cross_encoder():
     """Deep Learning Cross-Encoder for Neural Candidate Re-Ranking."""
-    if CrossEncoder is not None:
-        try:
-            return CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2", max_length=512)
-        except Exception:
-            return None
-    return None
+    try:
+        from sentence_transformers import CrossEncoder
+        return CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2", max_length=512)
+    except Exception:
+        return None
 
 
 @st.cache_resource(show_spinner=False)
@@ -84,9 +52,14 @@ def load_local_seq2seq(model_name: str = "google/flan-t5-small"):
 # Document Processing with Page & Source Metadata
 # ============================================================
 
-def extract_documents_with_metadata(uploaded_files) -> List[Document]:
+def extract_documents_with_metadata(uploaded_files) -> List[Any]:
     """Extract text from uploaded files and preserve page/file metadata."""
-    documents: List[Document] = []
+    from langchain_core.documents import Document
+    from PyPDF2 import PdfReader
+    import docx
+    import pandas as pd
+
+    documents: List[Any] = []
 
     for f in uploaded_files:
         filename = f.name
@@ -133,8 +106,11 @@ def extract_documents_with_metadata(uploaded_files) -> List[Document]:
     return documents
 
 
-def create_vectorstore_and_chunks(documents: List[Document]):
+def create_vectorstore_and_chunks(documents: List[Any]):
     """Split documents into semantic chunks with metadata and build FAISS index."""
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+    from langchain_community.vectorstores import FAISS
+
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=750,
         chunk_overlap=120,
@@ -149,7 +125,7 @@ def create_vectorstore_and_chunks(documents: List[Document]):
 # Deep Learning Features
 # ============================================================
 
-def neural_rerank(query: str, retrieved_docs: List[Document], top_k: int = 3) -> List[Document]:
+def neural_rerank(query: str, retrieved_docs: List[Any], top_k: int = 3) -> List[Any]:
     """Re-rank candidate documents using Cross-Encoder full-attention scoring."""
     reranker = get_cross_encoder()
     if reranker is None or len(retrieved_docs) <= top_k:
@@ -165,7 +141,7 @@ def neural_rerank(query: str, retrieved_docs: List[Document], top_k: int = 3) ->
         return retrieved_docs[:top_k]
 
 
-def compute_faithfulness_score(answer: str, source_docs: List[Document]) -> float:
+def compute_faithfulness_score(answer: str, source_docs: List[Any]) -> float:
     """Compute semantic entailment/grounding confidence score (0 to 100%)."""
     if not answer or not source_docs:
         return 0.0
@@ -195,8 +171,10 @@ def compute_faithfulness_score(answer: str, source_docs: List[Document]) -> floa
 
 def transcribe_audio_groq(audio_bytes: bytes, api_key: str) -> str:
     """Speech-to-Text using Groq Whisper Large v3."""
-    if Groq is None:
-        raise ImportError("groq is not installed.")
+    try:
+        from groq import Groq
+    except ImportError:
+        raise ImportError("groq package is not installed.")
     client = Groq(api_key=api_key)
     transcription = client.audio.transcriptions.create(
         file=("voice_question.wav", audio_bytes, "audio/wav"),
@@ -208,9 +186,10 @@ def transcribe_audio_groq(audio_bytes: bytes, api_key: str) -> str:
 
 def generate_audio_speech(text: str) -> Optional[bytes]:
     """Generate spoken audio bytes from text using gTTS."""
-    if gTTS is None or not text.strip():
+    if not text or not text.strip():
         return None
     try:
+        from gtts import gTTS
         # Take up to the first 120 words for smooth quick speech
         summary = " ".join(text.split()[:120])
         tts = gTTS(text=summary, lang="en")
@@ -222,12 +201,15 @@ def generate_audio_speech(text: str) -> Optional[bytes]:
         return None
 
 
-def generate_document_insights(chunks: List[Document], api_key: str) -> Dict[str, Any]:
+def generate_document_insights(chunks: List[Any], api_key: str) -> Dict[str, Any]:
     """Generate automatic Executive Summary and Document Overview using Groq."""
-    if not api_key or ChatGroq is None or not chunks:
+    if not api_key or not chunks:
         return {}
 
     try:
+        from langchain_groq import ChatGroq
+        from langchain_core.messages import HumanMessage
+
         sample_text = "\n\n".join(c.page_content for c in chunks[:5])
         llm = ChatGroq(model="openai/gpt-oss-120b", groq_api_key=api_key, temperature=0.2)
         prompt = (
@@ -248,7 +230,9 @@ def generate_document_insights(chunks: List[Document], api_key: str) -> Dict[str
 # ============================================================
 
 def build_groq_llm(api_key: str):
-    if ChatGroq is None:
+    try:
+        from langchain_groq import ChatGroq
+    except ImportError:
         raise ImportError("langchain-groq is not installed.")
     return ChatGroq(
         model="openai/gpt-oss-120b",
@@ -295,6 +279,7 @@ Detailed Answer:"""
 
 def execute_rag_query(llm, retriever, question: str, is_groq: bool, use_rerank: bool) -> Dict[str, Any]:
     """Execute complete RAG pipeline with retrieval, re-ranking, LLM answer, and confidence scoring."""
+    from langchain_core.messages import HumanMessage
     raw_docs = retriever.invoke(question)
 
     if use_rerank:
