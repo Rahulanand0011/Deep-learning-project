@@ -1,0 +1,74 @@
+# =========================
+# Secrets & API Keys
+# =========================
+.env
+.env*.local
+.env.backup
+# Keep .env.example tracked for repository users
+!.env.example
+
+# =========================
+# Virtual Environments
+# =========================
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# =========================
+# Python Cache & Bytecode
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# =========================
+# Distribution & Build
+# =========================
+.dist/
+build/
+dist/
+*.egg-info/
+*.egg
+
+# =========================
+# IDEs & Editors
+# =========================
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# =========================
+# Model Weights & Indexes
+# =========================
+*.bin
+*.pt
+*.pth
+*.safetensors
+*.onnx
+*.faiss
+*.pkl
+faiss_index/
+models/
+
+# =========================
+# Logs & Streamlit
+# =========================
+*.log
+.streamlit/secrets.toml
+
+# =========================
+# Operating System Files
+# =========================
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
