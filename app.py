@@ -295,17 +295,13 @@ Detailed Answer:"""
 
 def execute_rag_query(llm, retriever, question: str, is_groq: bool, use_rerank: bool) -> Dict[str, Any]:
     """Execute complete RAG pipeline with retrieval, re-ranking, LLM answer, and confidence scoring."""
-    # Step 1: Retrieve top candidates
-    k_candidates = 8 if use_rerank else 4
     raw_docs = retriever.invoke(question)
 
-    # Step 2: Cross-Encoder Neural Re-ranking
     if use_rerank:
         source_docs = neural_rerank(question, raw_docs, top_k=4)
     else:
         source_docs = raw_docs[:4]
 
-    # Step 3: Build prompt context
     context = "\n\n".join(
         f"[Source: {d.metadata.get('source', 'Doc')} | Page: {d.metadata.get('page', 'N/A')}]\n{d.page_content}"
         for d in source_docs
@@ -313,7 +309,6 @@ def execute_rag_query(llm, retriever, question: str, is_groq: bool, use_rerank: 
 
     prompt = QA_PROMPT.format(context=context, question=question)
 
-    # Step 4: Generate Answer
     try:
         if is_groq:
             res = llm.invoke([HumanMessage(content=prompt)])
@@ -327,7 +322,6 @@ def execute_rag_query(llm, retriever, question: str, is_groq: bool, use_rerank: 
         snippets = "\n\n".join(d.page_content[:300] for d in source_docs[:2])
         answer = f"Here is the most relevant information extracted from your document:\n\n{snippets}"
 
-    # Step 5: Compute Faithfulness Confidence Score
     confidence = compute_faithfulness_score(answer, source_docs)
 
     return {
@@ -338,8 +332,197 @@ def execute_rag_query(llm, retriever, question: str, is_groq: bool, use_rerank: 
 
 
 # ============================================================
-# Streamlit Interface
+# Streamlit Interface with Modern Professional Styling
 # ============================================================
+
+CUSTOM_CSS = """
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+html, body, [class*="css"] {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+/* Hero Header Card */
+.hero-card {
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.75) 0%, rgba(15, 23, 42, 0.85) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 18px;
+    padding: 24px 28px;
+    margin-bottom: 22px;
+    box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(12px);
+}
+
+.hero-title {
+    font-size: 2.1rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, #38bdf8 0%, #818cf8 50%, #c084fc 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin: 0 0 6px 0;
+}
+
+.hero-subtitle {
+    font-size: 0.95rem;
+    color: #94a3b8;
+    margin: 0 0 16px 0;
+}
+
+.hero-badges-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.tech-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 9999px;
+    font-size: 0.76rem;
+    font-weight: 600;
+}
+
+.badge-groq {
+    background: rgba(249, 115, 22, 0.12);
+    color: #fb923c;
+    border: 1px solid rgba(249, 115, 22, 0.35);
+}
+
+.badge-dl {
+    background: rgba(99, 102, 241, 0.12);
+    color: #818cf8;
+    border: 1px solid rgba(99, 102, 241, 0.35);
+}
+
+.badge-faiss {
+    background: rgba(14, 165, 233, 0.12);
+    color: #38bdf8;
+    border: 1px solid rgba(14, 165, 233, 0.35);
+}
+
+.badge-voice {
+    background: rgba(16, 185, 129, 0.12);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+/* Metric / Stat Boxes */
+.stat-card {
+    background: rgba(30, 41, 59, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 12px;
+    padding: 12px 16px;
+    text-align: center;
+    margin-bottom: 12px;
+}
+.stat-number {
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: #38bdf8;
+}
+.stat-name {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 2px;
+}
+
+/* Feature Preview Cards (Empty State) */
+.feature-card {
+    background: rgba(30, 41, 59, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 14px;
+    padding: 18px 20px;
+    height: 100%;
+    transition: all 0.3s ease;
+}
+.feature-card:hover {
+    border-color: rgba(129, 140, 248, 0.4);
+    background: rgba(30, 41, 59, 0.6);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 24px -10px rgba(99, 102, 241, 0.25);
+}
+.feature-icon {
+    font-size: 1.7rem;
+    margin-bottom: 8px;
+}
+.feature-title {
+    font-size: 0.98rem;
+    font-weight: 700;
+    color: #f8fafc;
+    margin-bottom: 6px;
+}
+.feature-text {
+    font-size: 0.82rem;
+    color: #94a3b8;
+    line-height: 1.45;
+}
+
+/* Score Pill Badge */
+.score-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 12px;
+    border-radius: 9999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    margin-top: 6px;
+}
+.score-high {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.35);
+}
+.score-mid {
+    background: rgba(234, 179, 8, 0.15);
+    color: #facc15;
+    border: 1px solid rgba(234, 179, 8, 0.35);
+}
+.score-low {
+    background: rgba(249, 115, 22, 0.15);
+    color: #fb923c;
+    border: 1px solid rgba(249, 115, 22, 0.35);
+}
+
+/* Citations & Source Tags */
+.source-tag {
+    display: inline-block;
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: #38bdf8;
+    margin-right: 6px;
+}
+
+/* Custom styled Process Button */
+div.stButton > button {
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%) !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    font-size: 0.95rem !important;
+    border-radius: 10px !important;
+    border: none !important;
+    padding: 10px 20px !important;
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.35) !important;
+    transition: all 0.25s ease !important;
+}
+div.stButton > button:hover {
+    box-shadow: 0 6px 22px rgba(124, 58, 237, 0.55) !important;
+    transform: translateY(-1px) !important;
+}
+</style>
+"""
+
 
 def main():
     st.set_page_config(
@@ -348,8 +531,8 @@ def main():
         layout="wide"
     )
 
-    st.title("🧠 Deep Learning Document Intelligence & Q&A")
-    st.caption("Powered by Groq LPUs (`openai/gpt-oss-120b`), FAISS Vector Embeddings, Cross-Encoder Re-Ranking & Whisper ASR")
+    # Inject custom CSS styling
+    st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
     # --- Session State Initialization ---
     if "llm" not in st.session_state:
@@ -364,10 +547,28 @@ def main():
         st.session_state.doc_insights = None
     if "ready" not in st.session_state:
         st.session_state.ready = False
+    if "chunks_count" not in st.session_state:
+        st.session_state.chunks_count = 0
+    if "docs_count" not in st.session_state:
+        st.session_state.docs_count = 0
+
+    # --- Hero Header ---
+    st.markdown("""
+    <div class="hero-card">
+        <div class="hero-title">🧠 Deep Learning Document Intelligence</div>
+        <div class="hero-subtitle">Interactive RAG Chatbot powered by Neural Cross-Encoder Re-Ranking, FAISS Dense Embeddings, and Groq LPU Inference</div>
+        <div class="hero-badges-container">
+            <span class="tech-badge badge-groq">⚡ Groq LPU (openai/gpt-oss-120b)</span>
+            <span class="tech-badge badge-dl">🔬 Cross-Encoder (ms-marco-MiniLM)</span>
+            <span class="tech-badge badge-faiss">🧩 FAISS Vector Index (all-MiniLM-L6)</span>
+            <span class="tech-badge badge-voice">🎙️ Whisper Large-v3 ASR</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     # --- Sidebar Configuration ---
     with st.sidebar:
-        st.title("⚙️ Deep Learning Engine")
+        st.title("⚙️ AI Architecture")
 
         model_choice = st.selectbox(
             "Select AI Model:",
@@ -386,13 +587,13 @@ def main():
                 type="password",
                 help="Pre-configured from .env"
             )
-            st.success("✅ Groq LPU Engine Active (`openai/gpt-oss-120b`)")
+            st.success("✅ Groq LPU Connected (`openai/gpt-oss-120b`)")
 
         st.divider()
-        st.subheader("🔬 Deep Learning Features")
-        use_reranker = st.toggle("⚡ Neural Cross-Encoder Re-Ranking", value=True, help="Re-ranks candidate chunks with a Transformer model for maximum retrieval accuracy.")
-        show_confidence = st.toggle("🎯 Faithfulness & Grounding Score", value=True, help="Calculates semantic confidence between the answer and source documents.")
-        enable_tts = st.toggle("🔊 Text-to-Speech Audio", value=True, help="Enables voice playback for AI answers.")
+        st.subheader("🔬 Deep Learning Controls")
+        use_reranker = st.toggle("⚡ Neural Cross-Encoder Re-Ranking", value=True, help="Re-ranks candidate passages using a transformer cross-encoder for peak precision.")
+        show_confidence = st.toggle("🎯 Faithfulness & Grounding Score", value=True, help="Computes mathematical entailment between generated answers and source passages.")
+        enable_tts = st.toggle("🔊 Text-to-Speech Playback", value=True, help="Enables spoken audio response playback.")
 
         st.divider()
         st.subheader("📁 Upload Documents")
@@ -445,9 +646,42 @@ def main():
                     st.session_state.ready = True
                     st.session_state.chunks_count = len(chunks)
                     st.session_state.docs_count = len(uploaded)
-                    st.success(f"✅ Indexed {len(chunks)} semantic chunks across {len(uploaded)} file(s)!")
+                    st.success(f"✅ Successfully indexed {len(chunks)} semantic chunks across {len(uploaded)} document(s)!")
                 except Exception as e:
                     st.error(f"Error processing documents: {e}")
+
+    # --- Metrics Bar (When Processed) ---
+    if st.session_state.ready:
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.markdown(f"""
+            <div class="stat-card">
+                <div class="stat-number">{st.session_state.docs_count}</div>
+                <div class="stat-name">Files Loaded</div>
+            </div>
+            """, unsafe_allow_html=True)
+        with col2:
+            st.markdown(f"""
+            <div class="stat-card">
+                <div class="stat-number">{st.session_state.chunks_count}</div>
+                <div class="stat-name">Vector Chunks</div>
+            </div>
+            """, unsafe_allow_html=True)
+        with col3:
+            rerank_status = "Enabled" if use_reranker else "Disabled"
+            st.markdown(f"""
+            <div class="stat-card">
+                <div class="stat-number" style="color: {'#34d399' if use_reranker else '#94a3b8'};">{rerank_status}</div>
+                <div class="stat-name">Cross-Encoder</div>
+            </div>
+            """, unsafe_allow_html=True)
+        with col4:
+            st.markdown(f"""
+            <div class="stat-card">
+                <div class="stat-number" style="color: #c084fc;">LPU 120B</div>
+                <div class="stat-name">Groq Engine</div>
+            </div>
+            """, unsafe_allow_html=True)
 
     # --- Document Insights Card ---
     if st.session_state.ready and st.session_state.doc_insights:
@@ -455,6 +689,36 @@ def main():
         if summary_text:
             with st.expander("📊 Document Executive Overview & Key Insights", expanded=False):
                 st.markdown(summary_text)
+
+    # --- Empty State Feature Showcase ---
+    if not st.session_state.ready:
+        col_a, col_b, col_c = st.columns(3)
+        with col_a:
+            st.markdown("""
+            <div class="feature-card">
+                <div class="feature-icon">📑</div>
+                <div class="feature-title">Multi-Format Ingestion</div>
+                <div class="feature-text">Upload PDFs, Word documents, CSV tables, or text files with automated page-level coordinate and metadata tracking.</div>
+            </div>
+            """, unsafe_allow_html=True)
+        with col_b:
+            st.markdown("""
+            <div class="feature-card">
+                <div class="feature-icon">🔬</div>
+                <div class="feature-title">Dual-Stage Neural Reranking</div>
+                <div class="feature-text">Combines dense FAISS bi-encoder retrieval with transformer Cross-Encoder re-scoring for near-zero hallucination.</div>
+            </div>
+            """, unsafe_allow_html=True)
+        with col_c:
+            st.markdown("""
+            <div class="feature-card">
+                <div class="feature-icon">🎙️</div>
+                <div class="feature-title">Voice & Spoken Audio</div>
+                <div class="feature-text">Ask questions using speech via Groq Whisper Large v3 and listen to spoken answers with neural text-to-speech.</div>
+            </div>
+            """, unsafe_allow_html=True)
+        st.write("")
+        st.info("👈 Upload your files in the left sidebar and click **Process & Analyze Documents** to begin.")
 
     # --- Voice Question Input (Speech-to-Text) ---
     voice_question = None
@@ -478,23 +742,25 @@ def main():
         with st.chat_message(item["role"], avatar=avatar):
             st.markdown(item["content"])
 
+            # Confidence Badge
+            conf = item.get("confidence")
+            if conf is not None:
+                if conf >= 85:
+                    st.markdown(f'<span class="score-badge score-high">🟢 Faithfulness: {conf}% (High Entailment)</span>', unsafe_allow_html=True)
+                elif conf >= 70:
+                    st.markdown(f'<span class="score-badge score-mid">🟡 Faithfulness: {conf}% (Moderate Entailment)</span>', unsafe_allow_html=True)
+                else:
+                    st.markdown(f'<span class="score-badge score-low">🟠 Faithfulness: {conf}% (Low Entailment)</span>', unsafe_allow_html=True)
+
             # Sources & Citations
             sources = item.get("sources", [])
             if sources:
                 with st.expander(f"📚 View Citations ({len(sources)} Sources Referenced)", expanded=False):
                     for idx, src in enumerate(sources, 1):
-                        st.markdown(f"**Source {idx}:** `{src.get('source', 'Document')}` — **Page {src.get('page', 'N/A')}**")
+                        source_name = src.get('source', 'Document')
+                        page_num = src.get('page', 'N/A')
+                        st.markdown(f'<span class="source-tag">{source_name} • Page {page_num}</span>', unsafe_allow_html=True)
                         st.caption(f"\"{src.get('snippet', '')}\"")
-
-            # Confidence Badge
-            conf = item.get("confidence")
-            if conf is not None:
-                if conf >= 85:
-                    st.caption(f"🟢 **Faithfulness Score:** `{conf}%` (High Entailment)")
-                elif conf >= 70:
-                    st.caption(f"🟡 **Faithfulness Score:** `{conf}%` (Moderate Entailment)")
-                else:
-                    st.caption(f"🟠 **Faithfulness Score:** `{conf}%` (Low Entailment)")
 
             # Audio Player
             audio_bytes = item.get("audio_bytes")
@@ -507,12 +773,10 @@ def main():
         active_question = text_question or voice_question
 
         if active_question:
-            # Add user message
             st.session_state.chat_history.append({"role": "user", "content": active_question})
             with st.chat_message("user", avatar="🧑‍💻"):
                 st.markdown(active_question)
 
-            # Generate response
             with st.chat_message("assistant", avatar="🤖"):
                 with st.spinner("Neural retrieval, cross-encoder re-ranking & generating answer..."):
                     result = execute_rag_query(
@@ -525,29 +789,31 @@ def main():
 
                 st.markdown(result["answer"])
 
+                # Confidence badge
+                conf = result["confidence"]
+                if show_confidence and conf is not None:
+                    if conf >= 85:
+                        st.markdown(f'<span class="score-badge score-high">🟢 Faithfulness: {conf}% (High Entailment)</span>', unsafe_allow_html=True)
+                    elif conf >= 70:
+                        st.markdown(f'<span class="score-badge score-mid">🟡 Faithfulness: {conf}% (Moderate Entailment)</span>', unsafe_allow_html=True)
+                    else:
+                        st.markdown(f'<span class="score-badge score-low">🟠 Faithfulness: {conf}% (Low Entailment)</span>', unsafe_allow_html=True)
+
                 # Expandable citations
                 serializable_sources = []
                 if result["sources"]:
                     with st.expander(f"📚 View Citations ({len(result['sources'])} Sources Referenced)", expanded=False):
                         for idx, src in enumerate(result["sources"], 1):
-                            st.markdown(f"**Source {idx}:** `{src.metadata.get('source', 'Document')}` — **Page {src.metadata.get('page', 'N/A')}**")
+                            source_name = src.metadata.get('source', 'Document')
+                            page_num = src.metadata.get('page', 'N/A')
+                            st.markdown(f'<span class="source-tag">{source_name} • Page {page_num}</span>', unsafe_allow_html=True)
                             snippet = src.page_content[:300].strip().replace("\n", " ") + "..."
                             st.caption(f"\"{snippet}\"")
                             serializable_sources.append({
-                                "source": src.metadata.get("source", "Document"),
-                                "page": src.metadata.get("page", "N/A"),
+                                "source": source_name,
+                                "page": page_num,
                                 "snippet": snippet
                             })
-
-                # Confidence score
-                conf = result["confidence"]
-                if show_confidence and conf is not None:
-                    if conf >= 85:
-                        st.caption(f"🟢 **Faithfulness Score:** `{conf}%` (High Entailment)")
-                    elif conf >= 70:
-                        st.caption(f"🟡 **Faithfulness Score:** `{conf}%` (Moderate Entailment)")
-                    else:
-                        st.caption(f"🟠 **Faithfulness Score:** `{conf}%` (Low Entailment)")
 
                 # Audio Speech Generation
                 speech_data = None
@@ -564,8 +830,6 @@ def main():
                 "confidence": conf if show_confidence else None,
                 "audio_bytes": speech_data
             })
-    else:
-        st.info("👈 Upload your files in the sidebar and click **Process & Analyze Documents** to get started.")
 
 
 if __name__ == "__main__":
